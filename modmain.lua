@@ -1,10 +1,5 @@
 
 
-local GetNewDeathAnnouncementString = GLOBAL.GetNewDeathAnnouncementString
-local GetNewRezAnnouncementString = GLOBAL.GetNewRezAnnouncementString
-local COMMAND_PERMISSION = GLOBAL.COMMAND_PERMISSION
-local GetGenderStrings = GLOBAL.GetGenderStrings
-local TheWorld = GLOBAL.TheWorld
 local TheSim = GLOBAL.TheSim
 local STRINGS = GLOBAL.STRINGS
 local json = GLOBAL.json
@@ -60,7 +55,6 @@ local function SendMessage(inst, message)
         return
     end
 
-    local gender = GetGenderStrings(inst.prefab)
     message = message:gsub(inst:GetDisplayName(), ""):gsub("^%s*(.-)%s*$", "%1"):gsub("(%a)([%w_']*)", TitleCase)
 
     TheSim:QueryServer(
