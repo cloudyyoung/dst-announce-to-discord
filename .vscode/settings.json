@@ -1,0 +1,31 @@
+{
+    "Lua.diagnostics.globals": [
+        "reign_of_giants_compatible",
+        "dst_compatible",
+        "icon_atlas",
+        "icon",
+        "all_clients_require_mod",
+        "server_filter_tags",
+        "dont_starve_compatible",
+        "api_version",
+        "forumthread",
+        "version",
+        "author",
+        "description",
+        "name",
+        "configuration_options",
+        "AddPlayerPostInit",
+        "GLOBAL",
+        "GetNewDeathAnnouncementString",
+        "GetNewRezAnnouncementString",
+        "TheWorld",
+        "AddUserCommand",
+        "TheSim",
+        "AddGamePostInit",
+        "AddSimPostInit",
+        "AddPrefabPostInit"
+    ],
+    "Lua.diagnostics.disable": [
+        "undefined-field"
+    ]
+}
