@@ -108,12 +108,12 @@ local function OnRespawnFromGhost(inst, data)
     end
 end
 
-local function OnPlayerEntered(inst)
+local function OnPlayerEntered(world, inst)
     local announcement = string.format(STRINGS.UI.NOTIFICATION.JOINEDGAME, "")
     SendMessage(inst, announcement)
 end
 
-local function OnPlayerExited(inst)
+local function OnPlayerExited(world, inst)
     local announcement = string.format(STRINGS.UI.NOTIFICATION.LEFTGAME, "")
     SendMessage(inst, announcement)
 end
