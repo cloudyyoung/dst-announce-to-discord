@@ -46,21 +46,25 @@ TheSim:GetPersistentString("discord_webhook_url", function(res, content)
 	end
 end)
 
-function TitleCase( first, rest )
-   return first:upper()..rest:lower()
-end
-
 local function SendMessage(inst, message)
+    print("discord send", inst, message)
+
     if not url then
         return
     end
 
-    message = message:gsub(inst:GetDisplayName(), ""):gsub("^%s*(.-)%s*$", "%1"):gsub("(%a)([%w_']*)", TitleCase)
+    if not inst:GetDisplayName() then
+        return
+    end
+
+    message = message:gsub(inst:GetDisplayName(), "")
+    message = message:gsub("^%s*(.-)%s*$", "%1")
+    message = message:gsub("^%l", string.upper)
 
     TheSim:QueryServer(
 		url,
 		function(json, res, code)
-			print("Announced to Discord", url, json)
+			print("Announced to Discord", json)
 		end,
 		"POST",
 		json.encode({
@@ -97,25 +101,41 @@ local function OnPlayerDeath(inst, data)
         inst.deathpkname = killer:HasTag("player") and killer:GetDisplayName() or nil
     end
     
-    local announcement = GetNewDeathAnnouncementString(inst, inst.deathcause, inst.deathpkname, inst.deathbypet)
+    local announcement = GLOBAL.GetNewDeathAnnouncementString(inst, inst.deathcause, inst.deathpkname, inst.deathbypet)
     SendMessage(inst, announcement)
 end
 
 local function OnRespawnFromGhost(inst, data)
     if inst.rezsource ~= nil then
-        local announcement = GetNewRezAnnouncementString(inst, inst.rezsource)
+        local announcement = GLOBAL.GetNewRezAnnouncementString(inst, inst.rezsource)
         SendMessage(inst, announcement)
     end
 end
 
-local function OnPlayerEntered(world, inst)
+local function OnPlayerJoinedLobby(world, inst)
     local announcement = string.format(STRINGS.UI.NOTIFICATION.JOINEDGAME, "")
+
+    -- Has to do this, otherwise `inst` would be a world updater instead of player, and crash
+    inst:DoTaskInTime(0, function()
+        SendMessage(inst, announcement)
+    end)
+end
+
+local function OnPlayerLeftLobby(world, inst)
+    local announcement = string.format(STRINGS.UI.NOTIFICATION.LEFTGAME, "")
     SendMessage(inst, announcement)
 end
 
-local function OnPlayerExited(world, inst)
-    local announcement = string.format(STRINGS.UI.NOTIFICATION.LEFTGAME, "")
+local function OnPlayerEnteredWorld(world, inst)
+    -- STRINGS.UI.SERVERCREATIONSCREEN.WORLD_LONG_FMT
+    -- STRINGS.UI.SANDBOXMENU.LOCATION.FOREST
+    local type = STRINGS.UI.SANDBOXMENU.LOCATION[world.worldprefab:upper()] or STRINGS.NAMES.UNKNOWN
+    local announcement = string.gsub(STRINGS.UI.SERVERCREATIONSCREEN.WORLD_LONG_FMT, "{location}", type)
     SendMessage(inst, announcement)
+end
+
+local function OnPlayerLeftWorld(world, inst)
+    -- Unused
 end
 
 
@@ -124,8 +144,10 @@ AddPrefabPostInit("world", function(world)
 		return
 	end
 
-    world:ListenForEvent("ms_playerjoined", OnPlayerEntered)
-    world:ListenForEvent("ms_playerleft", OnPlayerExited)
+    world:ListenForEvent("ms_playerspawn", OnPlayerJoinedLobby)
+    world:ListenForEvent("ms_playerdespawn", OnPlayerLeftLobby)
+    world:ListenForEvent("ms_playerjoined", OnPlayerEnteredWorld)
+    -- world:ListenForEvent("ms_playerleft", OnPlayerLeftWorld)
 end)
 
 AddPlayerPostInit(function(inst)
@@ -133,11 +155,13 @@ AddPlayerPostInit(function(inst)
     inst:ListenForEvent("respawnfromghost", OnRespawnFromGhost)
 end)
 
-GLOBAL.SetDiscordWebhook = function(_url)
+local function SetDiscordWebhook(_url)
     url = _url
     TheSim:SetPersistentString("discord_webhook_url", url, false, nil)
     print("set webhook")
 end
+
+GLOBAL.SetDiscordWebhook = SetDiscordWebhook
 
 -- AddUserCommand("webhook", {
 --     aliases = { "discordwebhook", "discord" },
@@ -187,3 +211,6 @@ end
 -- playerdeactivated
 -- ms_setseason
 -- ms_save
+-- ms_respawnedfromghost
+-- ms_becameghost
+-- entercharacterselect
