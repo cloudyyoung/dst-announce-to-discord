@@ -41,6 +41,11 @@ local character_icons = {
     wx78 = "https://cdn.discordapp.com/attachments/242336026251493376/735280438947610754/avatar_wx78.png"
 }
 
+local announcement_icons = {
+    death = "https://media.discordapp.net/attachments/818578474242670623/819356637457809498/death.png",
+    resurrect = "https://media.discordapp.net/attachments/818578474242670623/819355907367370802/resurrect.png"
+}
+
 TheSim:GetPersistentString(
     "discord_webhook_url",
     function(res, content)
@@ -52,7 +57,7 @@ TheSim:GetPersistentString(
     end
 )
 
-local function SendMessage(inst, message)
+local function SendAnnouncementMessage(inst, message, icon)
     print("discord send", inst, message)
 
     if not url then
@@ -75,7 +80,15 @@ local function SendMessage(inst, message)
         json.encode(
             {
                 username = inst:GetDisplayName(),
-                content = message,
+                -- content = message,
+                embeds = {
+                    {
+                        author = {
+                            name = message,
+                            icon_url = announcement_icons[icon] or ""
+                        }
+                    }
+                },
                 avatar_url = character_icons[inst.prefab] or character_icons.unknown
             }
         )
@@ -100,7 +113,6 @@ local function OnPlayerDeath(inst, data)
     inst:DoTaskInTime(
         0,
         function(inst)
-            print("discord death2", inst.deathcause, inst.deathpkname, inst.deathbypet)
             local announcement =
                 GetAnnouncementString(
                 GLOBAL.GetNewDeathAnnouncementString,
@@ -109,19 +121,19 @@ local function OnPlayerDeath(inst, data)
                 inst.deathpkname,
                 inst.deathbypet
             )
-            SendMessage(inst, announcement)
+            SendAnnouncementMessage(inst, announcement, "death")
         end
     )
 end
 
-local function OnRespawnFromGhost(inst, data)
+local function OnRespawnFromGhost(inst)
     -- wait for Game logic to set spawn values before get announcement string
     inst:DoTaskInTime(
         0,
         function(inst)
             if inst.rezsource ~= nil then
                 local announcement = GetAnnouncementString(GLOBAL.GetNewRezAnnouncementString, inst, inst.rezsource)
-                SendMessage(inst, announcement)
+                SendAnnouncementMessage(inst, announcement, "resurrect")
             end
         end
     )
@@ -135,20 +147,20 @@ local function OnPlayerJoined(world, inst)
             0,
             function(inst)
                 local announcement = string.format(STRINGS.UI.NOTIFICATION.JOINEDGAME, "")
-                SendMessage(inst, announcement)
+                SendAnnouncementMessage(inst, announcement)
             end
         )
     else
         -- Enter the world
         local type = STRINGS.UI.SANDBOXMENU.LOCATION[world.worldprefab:upper()] or STRINGS.NAMES.UNKNOWN
         local announcement = string.gsub(STRINGS.UI.SERVERCREATIONSCREEN.WORLD_LONG_FMT, "{location}", type)
-        SendMessage(inst, announcement)
+        SendAnnouncementMessage(inst, announcement)
     end
 end
 
 local function OnPlayerLeft(world, inst)
     local announcement = string.format(STRINGS.UI.NOTIFICATION.LEFTGAME, "")
-    SendMessage(inst, announcement)
+    SendAnnouncementMessage(inst, announcement)
 end
 
 AddPrefabPostInit(
@@ -159,10 +171,9 @@ AddPrefabPostInit(
         end
 
         -- Hijack Announcement functions
-        -- local _Networking_Announcement = Networking_Announcement
-        -- Networking_Announcement = function(message, color, announce_type)
+        -- local _Networking_Announcement = GLOBAL.Networking_Announcement
+        -- GLOBAL.Networking_Announcement = function(message, color, announce_type)
         --     print("discord send hijack", message, colour, announce_type)
-        --     Queue:addAnnouncement(message, announce_type)
         --     _Networking_Announcement(message, color, announce_type)
         -- end
 
