@@ -4,6 +4,7 @@ local json = GLOBAL.json
 
 -- local variables
 local url = nil
+local players = {}
 
 local character_icons = {
     unknown = "https://cdn.discordapp.com/attachments/242336026251493376/735280247464788028/avatar_unknown.png",
@@ -60,9 +61,8 @@ local function SendMessage(inst, message)
         return
     end
 
-    message = message:gsub(inst:GetDisplayName(), "")
-    message = message:gsub("^%s*(.-)%s*$", "%1")
-    message = message:gsub("^%l", string.upper)
+    message = message:gsub("^%s*(.-)%s*$", "%1") -- Capitalize first word
+    message = message:gsub("^%l", string.upper) -- Remove heading/trailing space
 
     TheSim:QueryServer(
         url,
@@ -134,32 +134,28 @@ local function OnRespawnFromGhost(inst, data)
     )
 end
 
-local function OnPlayerJoinedLobby(world, inst)
-    -- Has to do this, otherwise `inst` would be a world updater instead of player, and crash
-    inst:DoTaskInTime(
-        0,
-        function(inst)
-            local announcement = string.format(STRINGS.UI.NOTIFICATION.JOINEDGAME, "")
-            SendMessage(inst, announcement)
-        end
-    )
+local function OnPlayerJoined(world, inst)
+    if players[inst.userid] == nil then
+        -- Enter the Lobby
+        table.insert(players, inst.userid)
+        inst:DoTaskInTime(
+            0,
+            function(inst)
+                local announcement = string.format(STRINGS.UI.NOTIFICATION.JOINEDGAME, "")
+                SendMessage(inst, announcement)
+            end
+        )
+    else
+        -- Enter the world
+        local type = STRINGS.UI.SANDBOXMENU.LOCATION[world.worldprefab:upper()] or STRINGS.NAMES.UNKNOWN
+        local announcement = string.gsub(STRINGS.UI.SERVERCREATIONSCREEN.WORLD_LONG_FMT, "{location}", type)
+        SendMessage(inst, announcement)
+    end
 end
 
-local function OnPlayerLeftLobby(world, inst)
+local function OnPlayerLeft(world, inst)
     local announcement = string.format(STRINGS.UI.NOTIFICATION.LEFTGAME, "")
     SendMessage(inst, announcement)
-end
-
-local function OnPlayerEnteredWorld(world, inst)
-    -- STRINGS.UI.SERVERCREATIONSCREEN.WORLD_LONG_FMT
-    -- STRINGS.UI.SANDBOXMENU.LOCATION.FOREST
-    local type = STRINGS.UI.SANDBOXMENU.LOCATION[world.worldprefab:upper()] or STRINGS.NAMES.UNKNOWN
-    local announcement = string.gsub(STRINGS.UI.SERVERCREATIONSCREEN.WORLD_LONG_FMT, "{location}", type)
-    SendMessage(inst, announcement)
-end
-
-local function OnPlayerLeftWorld(world, inst)
-    -- Unused
 end
 
 AddPrefabPostInit(
@@ -177,10 +173,8 @@ AddPrefabPostInit(
         --     _Networking_Announcement(message, color, announce_type)
         -- end
 
-        -- world:ListenForEvent("ms_playerspawn", OnPlayerJoinedLobby)
-        -- world:ListenForEvent("ms_playerdespawn", OnPlayerLeftLobby)
-        -- world:ListenForEvent("ms_playerjoined", OnPlayerEnteredWorld)
-        -- world:ListenForEvent("ms_playerleft", OnPlayerLeftWorld)
+        world:ListenForEvent("ms_playerjoined", OnPlayerJoined)
+        world:ListenForEvent("ms_playerleft", OnPlayerLeft)
     end
 )
 
@@ -198,24 +192,6 @@ local function SetDiscordWebhook(_url)
 end
 
 GLOBAL.SetDiscordWebhook = SetDiscordWebhook
-
--- AddUserCommand("webhook", {
---     aliases = { "discordwebhook", "discord" },
---     prettyname = "Set Discord Webhook",
---     desc = "Set Discord webhook URL for this server, url should begin with \"https://discordapp.com/api/webhooks/\"",
---     permission = COMMAND_PERMISSION.MODERATOR,
---     confirm = false,
---     slash = true,
---     usermenu = false,
---     servermenu = false,
---     params = {"channel_id", "token"},
---     vote = false,
---     serverfn = function(param, caller)
---         url = "https://discordapp.com/api/webhooks/" .. param.channel_id .. "/" .. param.token
---         TheSim:SetPersistentString("discord_webhook_url", url, false, nil)
---         print("set webhook")
---     end,
--- })
 
 -- makeplayerghost
 -- respawnfromghost
