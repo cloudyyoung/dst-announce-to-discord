@@ -1,8 +1,8 @@
-
-
 local TheSim = GLOBAL.TheSim
 local STRINGS = GLOBAL.STRINGS
 local json = GLOBAL.json
+
+-- local variables
 local url = nil
 
 local character_icons = {
@@ -38,13 +38,16 @@ local character_icons = {
     wx78 = "https://cdn.discordapp.com/attachments/242336026251493376/735280438947610754/avatar_wx78.png"
 }
 
-TheSim:GetPersistentString("discord_webhook_url", function(res, content)
-	if res then
-		url = content
-	else
-		url = nil
-	end
-end)
+TheSim:GetPersistentString(
+    "discord_webhook_url",
+    function(res, content)
+        if res then
+            url = content
+        else
+            url = nil
+        end
+    end
+)
 
 local function SendMessage(inst, message)
     print("discord send", inst, message)
@@ -62,63 +65,84 @@ local function SendMessage(inst, message)
     message = message:gsub("^%l", string.upper)
 
     TheSim:QueryServer(
-		url,
-		function(json, res, code)
-			print("Announced to Discord", json)
-		end,
-		"POST",
-		json.encode({
-			username = inst:GetDisplayName(),
-			content = message,
-            avatar_url = character_icons[inst.prefab] or character_icons.unknown
-		})
-	) 
+        url,
+        function(json, res, code)
+            print("Announced to Discord", json)
+        end,
+        "POST",
+        json.encode(
+            {
+                username = inst:GetDisplayName(),
+                content = message,
+                avatar_url = character_icons[inst.prefab] or character_icons.unknown
+            }
+        )
+    )
 end
 
--- player_common_extensions.lua
+local function GetAnnouncementString(fn, inst, ...)
+    -- backup names
+    local name = inst.name
+    local displaynamefn = inst.displaynamefn
+    local nameoverride = inst.nameoverride
+
+    -- remove names
+    inst.name = ""
+    inst.displaynamefn = nil
+    inst.nameoverride = nil
+
+    -- Get announcement string
+    local announcement = fn(inst, ...)
+
+    -- recover names
+    inst.name = name
+    inst.displaynamefn = displaynamefn
+    inst.nameoverride = nameoverride
+
+    return announcement
+end
 
 local function OnPlayerDeath(inst, data)
-    if not inst:HasTag("player") then
-        return
-    end
-
-    inst.deathcause = data ~= nil and data.cause or "unknown"
-
-    if data == nil or data.afflicter == nil then
-        inst.deathpkname = nil
-    elseif data.afflicter.overridepkname ~= nil then
-        inst.deathpkname = data.afflicter.overridepkname
-        inst.deathbypet = data.afflicter.overridepkpet
-    else
-        local killer = data.afflicter.components.follower ~= nil and data.afflicter.components.follower:GetLeader() or nil
-        if killer ~= nil and
-            killer.components.petleash ~= nil and
-            killer.components.petleash:IsPet(data.afflicter) then
-            inst.deathbypet = true
-        else
-            killer = data.afflicter
+    -- wait for Game logic to set death values before get announcement string
+    inst:DoTaskInTime(
+        0,
+        function(inst)
+            print("discord death2", inst.deathcause, inst.deathpkname, inst.deathbypet)
+            local announcement =
+                GetAnnouncementString(
+                GLOBAL.GetNewDeathAnnouncementString,
+                inst,
+                inst.deathcause,
+                inst.deathpkname,
+                inst.deathbypet
+            )
+            SendMessage(inst, announcement)
         end
-        inst.deathpkname = killer:HasTag("player") and killer:GetDisplayName() or nil
-    end
-    
-    local announcement = GLOBAL.GetNewDeathAnnouncementString(inst, inst.deathcause, inst.deathpkname, inst.deathbypet)
-    SendMessage(inst, announcement)
+    )
 end
 
 local function OnRespawnFromGhost(inst, data)
-    if inst.rezsource ~= nil then
-        local announcement = GLOBAL.GetNewRezAnnouncementString(inst, inst.rezsource)
-        SendMessage(inst, announcement)
-    end
+    -- wait for Game logic to set spawn values before get announcement string
+    inst:DoTaskInTime(
+        0,
+        function(inst)
+            if inst.rezsource ~= nil then
+                local announcement = GetAnnouncementString(GLOBAL.GetNewRezAnnouncementString, inst, inst.rezsource)
+                SendMessage(inst, announcement)
+            end
+        end
+    )
 end
 
 local function OnPlayerJoinedLobby(world, inst)
-    local announcement = string.format(STRINGS.UI.NOTIFICATION.JOINEDGAME, "")
-
     -- Has to do this, otherwise `inst` would be a world updater instead of player, and crash
-    inst:DoTaskInTime(0, function()
-        SendMessage(inst, announcement)
-    end)
+    inst:DoTaskInTime(
+        0,
+        function(inst)
+            local announcement = string.format(STRINGS.UI.NOTIFICATION.JOINEDGAME, "")
+            SendMessage(inst, announcement)
+        end
+    )
 end
 
 local function OnPlayerLeftLobby(world, inst)
@@ -138,22 +162,34 @@ local function OnPlayerLeftWorld(world, inst)
     -- Unused
 end
 
+AddPrefabPostInit(
+    "world",
+    function(world)
+        if not world.ismastersim then
+            return
+        end
 
-AddPrefabPostInit("world", function(world)
-    if not world.ismastersim then
-		return
-	end
+        -- Hijack Announcement functions
+        -- local _Networking_Announcement = Networking_Announcement
+        -- Networking_Announcement = function(message, color, announce_type)
+        --     print("discord send hijack", message, colour, announce_type)
+        --     Queue:addAnnouncement(message, announce_type)
+        --     _Networking_Announcement(message, color, announce_type)
+        -- end
 
-    world:ListenForEvent("ms_playerspawn", OnPlayerJoinedLobby)
-    world:ListenForEvent("ms_playerdespawn", OnPlayerLeftLobby)
-    world:ListenForEvent("ms_playerjoined", OnPlayerEnteredWorld)
-    -- world:ListenForEvent("ms_playerleft", OnPlayerLeftWorld)
-end)
+        -- world:ListenForEvent("ms_playerspawn", OnPlayerJoinedLobby)
+        -- world:ListenForEvent("ms_playerdespawn", OnPlayerLeftLobby)
+        -- world:ListenForEvent("ms_playerjoined", OnPlayerEnteredWorld)
+        -- world:ListenForEvent("ms_playerleft", OnPlayerLeftWorld)
+    end
+)
 
-AddPlayerPostInit(function(inst)
-    inst:ListenForEvent("death", OnPlayerDeath)
-    inst:ListenForEvent("respawnfromghost", OnRespawnFromGhost)
-end)
+AddPlayerPostInit(
+    function(inst)
+        inst:ListenForEvent("death", OnPlayerDeath)
+        inst:ListenForEvent("respawnfromghost", OnRespawnFromGhost)
+    end
+)
 
 local function SetDiscordWebhook(_url)
     url = _url
@@ -180,8 +216,6 @@ GLOBAL.SetDiscordWebhook = SetDiscordWebhook
 --         print("set webhook")
 --     end,
 -- })
-
-
 
 -- makeplayerghost
 -- respawnfromghost
