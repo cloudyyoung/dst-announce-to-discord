@@ -1,6 +1,8 @@
 local TheSim = GLOBAL.TheSim
 local STRINGS = GLOBAL.STRINGS
 local json = GLOBAL.json
+local setmetatable = GLOBAL.setmetatable
+local getmetatable = GLOBAL.getmetatable
 
 -- local variables
 local url = nil
@@ -81,23 +83,14 @@ local function SendMessage(inst, message)
 end
 
 local function GetAnnouncementString(fn, inst, ...)
-    -- backup names
-    local name = inst.name
-    local displaynamefn = inst.displaynamefn
-    local nameoverride = inst.nameoverride
-
-    -- remove names
-    inst.name = ""
-    inst.displaynamefn = nil
-    inst.nameoverride = nil
+    -- Deep copy inst & remove names
+    _inst = DeepCopy(inst)
+    _inst.name = ""
+    _inst.displaynamefn = nil
+    _inst.nameoverride = nil
 
     -- Get announcement string
-    local announcement = fn(inst, ...)
-
-    -- recover names
-    inst.name = name
-    inst.displaynamefn = displaynamefn
-    inst.nameoverride = nameoverride
+    local announcement = fn(_inst, ...)
 
     return announcement
 end
@@ -189,6 +182,25 @@ local function SetDiscordWebhook(_url)
     url = _url
     TheSim:SetPersistentString("discord_webhook_url", url, false, nil)
     print("set webhook")
+end
+
+function DeepCopy(obj, seen)
+    -- Handle non-tables and previously-seen tables.
+    if type(obj) ~= "table" then
+        return obj
+    end
+    if seen and seen[obj] then
+        return seen[obj]
+    end
+
+    -- New table; mark it as seen and copy recursively.
+    local s = seen or {}
+    local res = {}
+    s[obj] = res
+    for k, v in pairs(obj) do
+        res[DeepCopy(k, s)] = DeepCopy(v, s)
+    end
+    return setmetatable(res, getmetatable(obj))
 end
 
 GLOBAL.SetDiscordWebhook = SetDiscordWebhook
