@@ -4,6 +4,7 @@ local json = GLOBAL.json
 local setmetatable = GLOBAL.setmetatable
 local getmetatable = GLOBAL.getmetatable
 local AllPlayers = GLOBAL.AllPlayers
+local ExceptionArrays = GLOBAL.ExceptionArrays
 
 -- local variables
 local url = nil
@@ -189,6 +190,7 @@ AddPrefabPostInit(
         GLOBAL.Networking_Announcement = function(message, color, announce_type)
             print("discord send hijack", message, colour, announce_type)
 
+            -- Announce other messages
             local ignore_announce_types = {
                 "death",
                 "resurrect",
@@ -199,10 +201,27 @@ AddPrefabPostInit(
                 _Networking_Announcement(message, color, announce_type)
                 SendAnnouncementMessage(world, message, announce_type)
             end
-        end
 
-        world:ListenForEvent("ms_playerjoined", OnPlayerJoined)
-        world:ListenForEvent("ms_playerleft", OnPlayerLeft)
+            -- Player joined
+            if announce_type == "join_game" then
+                local new_players = ExceptionArrays(AllPlayers, players)
+                for index, player in ipairs(new_players) do
+                    _Networking_Announcement(message, color, announce_type)
+                    table.insert(players, player)
+                    SendAnnouncementMessage(player, message, announce_type)
+                end
+            end
+
+            -- Player left
+            if announce_type == "left_game" then
+                local loss_players = ExceptionArrays(players, AllPlayers)
+                for index, player in (loss_players) do
+                    _Networking_Announcement(message, color, announce_type)
+                    table.removearrayvalue(players, player)
+                    SendAnnouncementMessage(player, message, announce_type)
+                end
+            end
+        end
     end
 )
 
