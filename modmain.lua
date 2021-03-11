@@ -155,7 +155,7 @@ local function OnPlayerJoined(world, inst)
         -- Enter the world
         local type = STRINGS.UI.SANDBOXMENU.LOCATION[world.worldprefab:upper()] or STRINGS.NAMES.UNKNOWN
         local announcement = string.gsub(STRINGS.UI.SERVERCREATIONSCREEN.WORLD_LONG_FMT, "{location}", type)
-        SendAnnouncementMessage(inst, announcement)
+        SendAnnouncementMessage(inst, announcement, "boot")
     end
 end
 
