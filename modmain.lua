@@ -43,7 +43,8 @@ local character_icons = {
 
 local announcement_icons = {
     death = "https://media.discordapp.net/attachments/818578474242670623/819356637457809498/death.png",
-    resurrect = "https://media.discordapp.net/attachments/818578474242670623/819355907367370802/resurrect.png"
+    resurrect = "https://media.discordapp.net/attachments/818578474242670623/819355907367370802/resurrect.png",
+    boot = "https://media.discordapp.net/attachments/818578474242670623/819359928023646218/boot.png"
 }
 
 TheSim:GetPersistentString(
@@ -147,7 +148,7 @@ local function OnPlayerJoined(world, inst)
             0,
             function(inst)
                 local announcement = string.format(STRINGS.UI.NOTIFICATION.JOINEDGAME, "")
-                SendAnnouncementMessage(inst, announcement)
+                SendAnnouncementMessage(inst, announcement, "boot")
             end
         )
     else
@@ -160,16 +161,12 @@ end
 
 local function OnPlayerLeft(world, inst)
     local announcement = string.format(STRINGS.UI.NOTIFICATION.LEFTGAME, "")
-    SendAnnouncementMessage(inst, announcement)
+    SendAnnouncementMessage(inst, announcement, "boot")
 end
 
 AddPrefabPostInit(
     "world",
     function(world)
-        if not world.ismastersim then
-            return
-        end
-
         -- Hijack Announcement functions
         -- local _Networking_Announcement = GLOBAL.Networking_Announcement
         -- GLOBAL.Networking_Announcement = function(message, color, announce_type)
