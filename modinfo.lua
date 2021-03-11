@@ -3,7 +3,7 @@ description = [[
 Announce to Discord
 ]]
 author = "Cloudy Young"
-version = "0.0.9"
+version = "0.0.10"
 forumthread = ""
 api_version = 10
 dont_starve_compatible = false

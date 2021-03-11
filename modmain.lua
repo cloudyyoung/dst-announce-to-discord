@@ -3,6 +3,7 @@ local STRINGS = GLOBAL.STRINGS
 local json = GLOBAL.json
 local setmetatable = GLOBAL.setmetatable
 local getmetatable = GLOBAL.getmetatable
+local AllPlayers = GLOBAL.AllPlayers
 
 -- local variables
 local url = nil
@@ -94,7 +95,7 @@ end
 
 local function GetAnnouncementString(fn, inst, ...)
     -- Deep copy inst & remove names
-    _inst = DeepCopy(inst)
+    _inst = deepcopy(inst)
     _inst.name = ""
     _inst.displaynamefn = nil
     _inst.nameoverride = nil
@@ -137,39 +138,53 @@ local function OnRespawnFromGhost(inst)
 end
 
 local function OnPlayerJoined(world, inst)
-    if not table.contains(players, inst.userid) then
-        -- Enter the Lobby
-        table.insert(players, inst.userid)
-        inst:DoTaskInTime(
-            0,
-            function(inst)
-                local announcement = string.format(STRINGS.UI.NOTIFICATION.JOINEDGAME, "")
-                SendAnnouncementMessage(inst, announcement, "boot")
-            end
-        )
-    else
-        -- Enter the world
-        local type = STRINGS.UI.SANDBOXMENU.LOCATION[world.worldprefab:upper()] or STRINGS.NAMES.UNKNOWN
-        local announcement = string.gsub(STRINGS.UI.SERVERCREATIONSCREEN.WORLD_LONG_FMT, "{location}", type)
-        SendAnnouncementMessage(inst, announcement, "boot")
+    if table.contains(players, inst.userid) then
+        return
     end
+
+    -- Enter the Lobby
+    table.insert(players, inst.userid)
+    inst:DoTaskInTime(
+        0,
+        function(inst)
+            local announcement = string.format(STRINGS.UI.NOTIFICATION.JOINEDGAME, "")
+            SendAnnouncementMessage(inst, announcement, "boot")
+        end
+    )
 end
 
 local function OnPlayerLeft(world, inst)
-    table.remove(players, inst.userid)
+    if table.contains(AllPlayers, inst) then
+        return
+    end
+
+    table.removearrayvalue(players, inst.userid)
     local announcement = string.format(STRINGS.UI.NOTIFICATION.LEFTGAME, "")
     SendAnnouncementMessage(inst, announcement, "boot")
 end
+
+-- AddGamePostInit(
+--     function(inst)
+--         -- world prepared
+--         print("discord game post")
+--     end
+-- )
+
+-- AddSimPostInit(
+--     function(inst)
+--         print("discord sim post")
+--     end
+-- )
 
 AddPrefabPostInit(
     "world",
     function(world)
         -- This is neccessary, otherwise client would overload memory
-        if not world.ismastersim then
+        if not world.ismastershard then
             return
         end
 
-        -- Hijack Announcement functions
+        -- Hijack Announcement function
         local _Networking_Announcement = GLOBAL.Networking_Announcement
         GLOBAL.Networking_Announcement = function(message, color, announce_type)
             print("discord send hijack", message, colour, announce_type)
@@ -186,8 +201,8 @@ AddPrefabPostInit(
             end
         end
 
-        world:ListenForEvent("ms_playerspawn", OnPlayerJoined)
-        world:ListenForEvent("ms_playerdespawn", OnPlayerLeft)
+        world:ListenForEvent("ms_playerjoined", OnPlayerJoined)
+        world:ListenForEvent("ms_playerleft", OnPlayerLeft)
     end
 )
 
@@ -202,25 +217,6 @@ local function SetDiscordWebhook(_url)
     url = _url
     TheSim:SetPersistentString("discord_webhook_url", url, false, nil)
     print("set webhook")
-end
-
-function DeepCopy(obj, seen)
-    -- Handle non-tables and previously-seen tables.
-    if type(obj) ~= "table" then
-        return obj
-    end
-    if seen and seen[obj] then
-        return seen[obj]
-    end
-
-    -- New table; mark it as seen and copy recursively.
-    local s = seen or {}
-    local res = {}
-    s[obj] = res
-    for k, v in pairs(obj) do
-        res[DeepCopy(k, s)] = DeepCopy(v, s)
-    end
-    return setmetatable(res, getmetatable(obj))
 end
 
 GLOBAL.SetDiscordWebhook = SetDiscordWebhook
@@ -256,3 +252,7 @@ GLOBAL.SetDiscordWebhook = SetDiscordWebhook
 -- ms_respawnedfromghost
 -- ms_becameghost
 -- entercharacterselect
+-- ms_clientauthenticationcomplete
+-- ms_clientdisconnected
+-- player_ready_to_start_dirty
+-- ms_requestedlobbycharacter
