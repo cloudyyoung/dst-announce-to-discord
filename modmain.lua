@@ -180,8 +180,8 @@ AddPrefabPostInit(
             end
         end
 
-        world:ListenForEvent("ms_playerjoined", OnPlayerJoined)
-        world:ListenForEvent("ms_playerleft", OnPlayerLeft)
+        world:ListenForEvent("ms_playerspawn", OnPlayerJoined)
+        world:ListenForEvent("ms_playerdespawn", OnPlayerLeft)
     end
 )
 
