@@ -156,6 +156,7 @@ local function OnPlayerJoined(world, inst)
 end
 
 local function OnPlayerLeft(world, inst)
+    table.remove(players, inst.userid)
     local announcement = string.format(STRINGS.UI.NOTIFICATION.LEFTGAME, "")
     SendAnnouncementMessage(inst, announcement, "boot")
 end
