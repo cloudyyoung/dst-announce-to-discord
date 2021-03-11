@@ -1,10 +1,9 @@
 name = "Announce to Discord"
-description = 
-[[
+description = [[
 Announce to Discord
 ]]
 author = "Cloudy Young"
-version = "0.0.5"
+version = "0.0.7"
 forumthread = ""
 api_version = 10
 dont_starve_compatible = false
@@ -13,7 +12,7 @@ dst_compatible = true
 icon_atlas = "modicon.xml"
 icon = "modicon.tex"
 all_clients_require_mod = false
-server_filter_tags = { "announcement", "discord" }
+server_filter_tags = {"announcement", "discord"}
 configuration_options = {}
 
 --https://forums.kleientertainment.com/forums/topic/124039-more-mod-config-options-options/

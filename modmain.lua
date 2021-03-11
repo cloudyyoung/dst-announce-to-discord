@@ -163,6 +163,10 @@ end
 AddPrefabPostInit(
     "world",
     function(world)
+        if not world.ismastersim then
+            return
+        end
+
         -- Hijack Announcement functions
         local _Networking_Announcement = GLOBAL.Networking_Announcement
         GLOBAL.Networking_Announcement = function(message, color, announce_type)
