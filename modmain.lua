@@ -5,6 +5,7 @@ local setmetatable = GLOBAL.setmetatable
 local getmetatable = GLOBAL.getmetatable
 local AllPlayers = GLOBAL.AllPlayers
 local ExceptionArrays = GLOBAL.ExceptionArrays
+local deepcopy = GLOBAL.deepcopy
 
 -- local variables
 local url = nil
@@ -61,7 +62,7 @@ TheSim:GetPersistentString(
 )
 
 local function SendAnnouncementMessage(inst, message, icon)
-    print("discord send", inst, message)
+    print("[discord sending]", inst, message)
 
     if not url then
         return
@@ -73,7 +74,7 @@ local function SendAnnouncementMessage(inst, message, icon)
     TheSim:QueryServer(
         url,
         function(json, res, code)
-            print("Announced to Discord", json)
+            print("[Discord]", json)
         end,
         "POST",
         json.encode(
@@ -138,32 +139,6 @@ local function OnRespawnFromGhost(inst)
     )
 end
 
-local function OnPlayerJoined(world, inst)
-    if table.contains(players, inst.userid) then
-        return
-    end
-
-    -- Enter the Lobby
-    table.insert(players, inst.userid)
-    inst:DoTaskInTime(
-        0,
-        function(inst)
-            local announcement = string.format(STRINGS.UI.NOTIFICATION.JOINEDGAME, "")
-            SendAnnouncementMessage(inst, announcement, "boot")
-        end
-    )
-end
-
-local function OnPlayerLeft(world, inst)
-    if table.contains(AllPlayers, inst) then
-        return
-    end
-
-    table.removearrayvalue(players, inst.userid)
-    local announcement = string.format(STRINGS.UI.NOTIFICATION.LEFTGAME, "")
-    SendAnnouncementMessage(inst, announcement, "boot")
-end
-
 -- AddGamePostInit(
 --     function(inst)
 --         -- world prepared
@@ -177,6 +152,27 @@ end
 --     end
 -- )
 
+local function OnPlayerJoined(world, inst)
+    inst:DoTaskInTime(
+        0,
+        function(inst)
+            if table.contains(players, inst.userid) then
+                return
+            end
+
+            table.insert(players, inst.userid)
+            local announcement = string.format(STRINGS.UI.NOTIFICATION.JOINEDGAME, "")
+            SendAnnouncementMessage(inst, announcement, "boot")
+        end
+    )
+end
+
+local function OnPlayerLeft(world, inst)
+    table.removearrayvalue(players, inst.userid)
+    local announcement = string.format(STRINGS.UI.NOTIFICATION.LEFTGAME, "")
+    SendAnnouncementMessage(inst, announcement, "boot")
+end
+
 AddPrefabPostInit(
     "world",
     function(world)
@@ -188,7 +184,7 @@ AddPrefabPostInit(
         -- Hijack Announcement function
         local _Networking_Announcement = GLOBAL.Networking_Announcement
         GLOBAL.Networking_Announcement = function(message, color, announce_type)
-            print("discord send hijack", message, colour, announce_type)
+            print("[Discord hijack]", message, colour, announce_type)
 
             -- Announce other messages
             local ignore_announce_types = {
@@ -201,27 +197,10 @@ AddPrefabPostInit(
                 _Networking_Announcement(message, color, announce_type)
                 SendAnnouncementMessage(world, message, announce_type)
             end
-
-            -- Player joined
-            if announce_type == "join_game" then
-                local new_players = ExceptionArrays(AllPlayers, players)
-                for index, player in ipairs(new_players) do
-                    _Networking_Announcement(message, color, announce_type)
-                    table.insert(players, player)
-                    SendAnnouncementMessage(player, message, announce_type)
-                end
-            end
-
-            -- Player left
-            if announce_type == "left_game" then
-                local loss_players = ExceptionArrays(players, AllPlayers)
-                for index, player in (loss_players) do
-                    _Networking_Announcement(message, color, announce_type)
-                    table.removearrayvalue(players, player)
-                    SendAnnouncementMessage(player, message, announce_type)
-                end
-            end
         end
+
+        world:ListenForEvent("ms_playerspawn", OnPlayerJoined)
+        world:ListenForEvent("ms_playerdespawn", OnPlayerLeft)
     end
 )
 
