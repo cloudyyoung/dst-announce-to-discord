@@ -137,7 +137,7 @@ local function OnRespawnFromGhost(inst)
 end
 
 local function OnPlayerJoined(world, inst)
-    if players[inst.userid] == nil then
+    if not table.contains(players, inst.userid) then
         -- Enter the Lobby
         table.insert(players, inst.userid)
         inst:DoTaskInTime(
@@ -163,6 +163,7 @@ end
 AddPrefabPostInit(
     "world",
     function(world)
+        -- This is neccessary, otherwise client would overload memory
         if not world.ismastersim then
             return
         end
