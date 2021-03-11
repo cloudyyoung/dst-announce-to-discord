@@ -65,10 +65,6 @@ local function SendAnnouncementMessage(inst, message, icon)
         return
     end
 
-    if not inst:GetDisplayName() then
-        return
-    end
-
     message = message:gsub("^%s*(.-)%s*$", "%1") -- Capitalize first word
     message = message:gsub("^%l", string.upper) -- Remove heading/trailing space
 
@@ -168,11 +164,21 @@ AddPrefabPostInit(
     "world",
     function(world)
         -- Hijack Announcement functions
-        -- local _Networking_Announcement = GLOBAL.Networking_Announcement
-        -- GLOBAL.Networking_Announcement = function(message, color, announce_type)
-        --     print("discord send hijack", message, colour, announce_type)
-        --     _Networking_Announcement(message, color, announce_type)
-        -- end
+        local _Networking_Announcement = GLOBAL.Networking_Announcement
+        GLOBAL.Networking_Announcement = function(message, color, announce_type)
+            print("discord send hijack", message, colour, announce_type)
+
+            local ignore_announce_types = {
+                "death",
+                "resurrect",
+                "join_game",
+                "leave_game"
+            }
+            if not table.contains(ignore_announce_types, announce_type) then
+                _Networking_Announcement(message, color, announce_type)
+                SendAnnouncementMessage(world, message, announce_type)
+            end
+        end
 
         world:ListenForEvent("ms_playerjoined", OnPlayerJoined)
         world:ListenForEvent("ms_playerleft", OnPlayerLeft)
