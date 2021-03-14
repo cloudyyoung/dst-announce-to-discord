@@ -139,12 +139,27 @@ local function OnRespawnFromGhost(inst)
     )
 end
 
--- AddGamePostInit(
---     function(inst)
---         -- world prepared
---         print("discord game post")
---     end
--- )
+AddGamePostInit(
+    function(inst)
+        -- Hijack Announcement function
+        local _Networking_Announcement = GLOBAL.Networking_Announcement
+        GLOBAL.Networking_Announcement = function(message, color, announce_type)
+            print("[Discord hijack]", message, colour, announce_type)
+
+            -- Announce other messages
+            local ignore_announce_types = {
+                "death",
+                "resurrect",
+                "join_game",
+                "leave_game"
+            }
+            if not table.contains(ignore_announce_types, announce_type) then
+                _Networking_Announcement(message, color, announce_type)
+                SendAnnouncementMessage(world, message, announce_type)
+            end
+        end
+    end
+)
 
 -- AddSimPostInit(
 --     function(inst)
@@ -173,43 +188,25 @@ local function OnPlayerLeft(world, inst)
     SendAnnouncementMessage(inst, announcement, "boot")
 end
 
-AddPrefabPostInit(
-    "world",
-    function(world)
-        -- This is neccessary, otherwise client would overload memory
-        if not world.ismastershard then
-            return
-        end
-
-        -- Hijack Announcement function
-        local _Networking_Announcement = GLOBAL.Networking_Announcement
-        GLOBAL.Networking_Announcement = function(message, color, announce_type)
-            print("[Discord hijack]", message, colour, announce_type)
-
-            -- Announce other messages
-            local ignore_announce_types = {
-                "death",
-                "resurrect",
-                "join_game",
-                "leave_game"
-            }
-            if not table.contains(ignore_announce_types, announce_type) then
-                _Networking_Announcement(message, color, announce_type)
-                SendAnnouncementMessage(world, message, announce_type)
-            end
-        end
-
-        world:ListenForEvent("ms_playerspawn", OnPlayerJoined)
-        world:ListenForEvent("ms_playerdespawn", OnPlayerLeft)
+local function OnPrefabPostInit(world)
+    -- This is neccessary, otherwise client would overload memory
+    if not world.ismastershard then
+        return
     end
-)
 
-AddPlayerPostInit(
-    function(inst)
-        inst:ListenForEvent("death", OnPlayerDeath)
-        inst:ListenForEvent("respawnfromghost", OnRespawnFromGhost)
-    end
-)
+    world:ListenForEvent("ms_playerspawn", OnPlayerJoined)
+    world:ListenForEvent("ms_playerdespawn", OnPlayerLeft)
+end
+
+local function OnPlayerPostInit(inst)
+    inst:ListenForEvent("death", OnPlayerDeath)
+    inst:ListenForEvent("respawnfromghost", OnRespawnFromGhost)
+end
+
+AddPrefabPostInit("world", OnPrefabPostInit)
+AddPrefabPostInit("cave", OnPrefabPostInit)
+
+AddPlayerPostInit(OnPlayerPostInit)
 
 local function SetDiscordWebhook(_url)
     url = _url
