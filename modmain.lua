@@ -251,3 +251,16 @@ GLOBAL.SetDiscordWebhook = SetDiscordWebhook
 -- ms_clientdisconnected
 -- player_ready_to_start_dirty
 -- ms_requestedlobbycharacter
+-- ms_startvote
+-- ms_stopvote
+-- ms_receivevote
+-- ms_setclocksegs
+-- ms_setphase
+-- ms_nextphase
+-- ms_nextcycle
+-- ms_simunpaused
+-- ms_cyclecomplete
+-- master_clockupdate
+
+-- Networking:
+-- LookupPlayerInstByUserID
