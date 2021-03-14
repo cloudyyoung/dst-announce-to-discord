@@ -1,4 +1,5 @@
 local TheSim = GLOBAL.TheSim
+local TheNet = GLOBAL.TheNet
 local STRINGS = GLOBAL.STRINGS
 local json = GLOBAL.json
 local setmetatable = GLOBAL.setmetatable
@@ -10,6 +11,8 @@ local deepcopy = GLOBAL.deepcopy
 -- local variables
 local url = nil
 local players = {}
+
+local dst_icon = "https://cdn.discordapp.com/attachments/818578474242670623/820508820517552158/dst.png"
 
 local character_icons = {
     unknown = "https://cdn.discordapp.com/attachments/242336026251493376/735280247464788028/avatar_unknown.png",
@@ -44,12 +47,6 @@ local character_icons = {
     wx78 = "https://cdn.discordapp.com/attachments/242336026251493376/735280438947610754/avatar_wx78.png"
 }
 
-local announcement_icons = {
-    death = "https://media.discordapp.net/attachments/818578474242670623/819356637457809498/death.png",
-    resurrect = "https://media.discordapp.net/attachments/818578474242670623/819355907367370802/resurrect.png",
-    boot = "https://media.discordapp.net/attachments/818578474242670623/819359928023646218/boot.png"
-}
-
 TheSim:GetPersistentString(
     "discord_webhook_url",
     function(res, content)
@@ -79,17 +76,19 @@ local function SendAnnouncementMessage(inst, message, icon)
         "POST",
         json.encode(
             {
-                username = inst:GetDisplayName(),
-                -- content = message,
+                username = TheNet:GetServerName(),
                 embeds = {
                     {
-                        author = {
-                            name = message,
-                            icon_url = announcement_icons[icon] or ""
-                        }
+                        title = message,
+                        author = inst ~= nil and
+                            {
+                                name = inst:GetDisplayName(),
+                                icon_url = character_icons[inst.prefab] or character_icons.unknown
+                            } or
+                            nil
                     }
                 },
-                avatar_url = character_icons[inst.prefab] or character_icons.unknown
+                avatar_url = dst_icon
             }
         )
     )
@@ -155,7 +154,7 @@ AddGamePostInit(
             }
             if not table.contains(ignore_announce_types, announce_type) then
                 _Networking_Announcement(message, color, announce_type)
-                SendAnnouncementMessage(world, message, announce_type)
+                SendAnnouncementMessage(nil, message, announce_type)
             end
         end
     end
