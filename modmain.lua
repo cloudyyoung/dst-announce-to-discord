@@ -58,7 +58,7 @@ TheSim:GetPersistentString(
     end
 )
 
-local function SendAnnouncementMessage(inst, message, icon)
+local function SendAnnouncementMessage(inst, message)
     print("[discord sending]", inst, message)
 
     if not url then
@@ -120,7 +120,7 @@ local function OnPlayerDeath(inst, data)
                 inst.deathpkname,
                 inst.deathbypet
             )
-            SendAnnouncementMessage(inst, announcement, "death")
+            SendAnnouncementMessage(inst, announcement)
         end
     )
 end
@@ -132,7 +132,7 @@ local function OnRespawnFromGhost(inst)
         function(inst)
             if inst.rezsource ~= nil then
                 local announcement = GetAnnouncementString(GLOBAL.GetNewRezAnnouncementString, inst, inst.rezsource)
-                SendAnnouncementMessage(inst, announcement, "resurrect")
+                SendAnnouncementMessage(inst, announcement)
             end
         end
     )
@@ -140,21 +140,22 @@ end
 
 AddGamePostInit(
     function(inst)
+        -- These types are handled somewhere else
+        local ignore_announce_types = {
+            "death",
+            "resurrect",
+            "join_game",
+            "leave_game"
+        }
+
         -- Hijack Announcement function
         local _Networking_Announcement = GLOBAL.Networking_Announcement
         GLOBAL.Networking_Announcement = function(message, color, announce_type)
             print("[Discord hijack]", message, colour, announce_type)
+            _Networking_Announcement(message, color, announce_type)
 
-            -- Announce other messages
-            local ignore_announce_types = {
-                "death",
-                "resurrect",
-                "join_game",
-                "leave_game"
-            }
             if not table.contains(ignore_announce_types, announce_type) then
-                _Networking_Announcement(message, color, announce_type)
-                SendAnnouncementMessage(nil, message, announce_type)
+                SendAnnouncementMessage(nil, message)
             end
         end
     end
@@ -176,7 +177,7 @@ local function OnPlayerJoined(world, inst)
 
             table.insert(players, inst.userid)
             local announcement = string.format(STRINGS.UI.NOTIFICATION.JOINEDGAME, "")
-            SendAnnouncementMessage(inst, announcement, "boot")
+            SendAnnouncementMessage(inst, announcement)
         end
     )
 end
@@ -184,7 +185,7 @@ end
 local function OnPlayerLeft(world, inst)
     table.removearrayvalue(players, inst.userid)
     local announcement = string.format(STRINGS.UI.NOTIFICATION.LEFTGAME, "")
-    SendAnnouncementMessage(inst, announcement, "boot")
+    SendAnnouncementMessage(inst, announcement)
 end
 
 local function OnPrefabPostInit(world)
